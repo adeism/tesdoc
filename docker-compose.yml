@@ -1,10 +1,33 @@
 version: '3.8'
+
 services:
-  app:
-    build: .
+  nginx:
+    image: nginx:latest
+    container_name: slims-nginx
     ports:
       - "8080:80"
     volumes:
-      - ./src:/var/www/html
+      - ./nginx/slims.conf:/etc/nginx/conf.d/default.conf
+      - ./www/html/slims:/var/www/html/slims
+    depends_on:
+      - php
+      - db
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: slims-php
+    volumes:
+      - ./www/html/slims:/var/www/html/slims
+
+  db:
+    image: mysql:5.7
+    container_name: slims-db
     environment:
-      - MYSQL_ROOT_PASSWORD=root
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: slims
+      MYSQL_USER: slims
+      MYSQL_PASSWORD: slims
+    ports:
+      - "3306:3306"
