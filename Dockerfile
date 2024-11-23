@@ -1,23 +1,33 @@
-FROM php:8.1-fpm-alpine
+FROM php:8.1-fpm
 
-# Install nginx, PHP extensions, dan library sistem
-RUN apk add --no-cache \
-    nginx mariadb supervisor curl bash libpng-dev gettext-dev \
-    oniguruma-dev libjpeg-turbo-dev libwebp-dev libxpm-dev freetype-dev
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    nginx \
+    libzip-dev \
+    zip \
+    unzip \
+    libpng-dev \
+    libjpeg-dev \
+    libonig-dev \
+    libxml2-dev \
+    curl \
+    git \
+    && docker-php-ext-install pdo_mysql mbstring zip gd xml
 
-# Konfigurasi PHP GD
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install gd gettext mbstring mysqli pdo pdo_mysql
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Copy konfigurasi Nginx
-COPY ./nginx.conf /etc/nginx/nginx.conf
+# Copy SLiMS application files
+COPY www/html/slims /var/www/html/slims
 
-# Verifikasi konfigurasi Nginx
-RUN nginx -t
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/slims \
+    && chmod -R 755 /var/www/html/slims
 
-# Konfigurasi Supervisor untuk menjalankan Nginx dan PHP-FPM
-COPY ./supervisord.conf /etc/supervisord.conf
+# Copy Nginx configuration
+COPY nginx/slims.conf /etc/nginx/sites-available/slims
+RUN ln -s /etc/nginx/sites-available/slims /etc/nginx/sites-enabled/
 
-# Expose port dan entrypoint
+# Expose ports and set the default command
 EXPOSE 80
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+CMD service php8.1-fpm start && nginx -g "daemon off;"
